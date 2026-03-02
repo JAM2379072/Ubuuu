@@ -1,25 +1,28 @@
-name: Setup GNOME with Cloudflared and VNC
+name: Setup XFCE and VNC with Cloudflared (6-Hour Runtime)
 
 on:
   workflow_dispatch:
 
 jobs:
-  setup-gnome-vnc:
+  setup-xfce-vnc:
     runs-on: ubuntu-latest
-    timeout-minutes: 360 # Sets a timeout of 6 hours for the workflow
+    timeout-minutes: 360 # Limit the workflow to 6 hours
 
     steps:
       - name: Update and Upgrade System
         run: |
           sudo apt-get update && sudo apt-get upgrade -y
 
+      - name: Install XFCE and Dependencies
+        run: |
+          # Install XFCE desktop environment and dependencies
+          sudo apt-get install -y xfce4 xfce4-goodies tigervnc-standalone-server
+
       - name: Add and Install Cloudflared
         run: |
-          # Add the Cloudflare GPG key
+          # Add Cloudflare's GPG repository
           sudo mkdir -p --mode=0755 /usr/share/keyrings
           curl -fsSL https://pkg.cloudflare.com/cloudflare-public-v2.gpg | sudo tee /usr/share/keyrings/cloudflare-public-v2.gpg >/dev/null
-
-          # Add the Cloudflare repository
           echo 'deb [signed-by=/usr/share/keyrings/cloudflare-public-v2.gpg] https://pkg.cloudflare.com/cloudflared any main' | sudo tee /etc/apt/sources.list.d/cloudflared.list
 
           # Update and install Cloudflared
@@ -29,35 +32,24 @@ jobs:
         env:
           TUNNEL_TOKEN: eyJhIjoiY2U5MWFiYmQyYWU3YjhlZjQxMmU0YWQxODJmYzUxYzciLCJ0IjoiM2MzZGE2MmEtMzMwOS00ZjAxLTkxYTctYTQ1NjBkNDVjZTQ0IiwicyI6Ik5UVTJOakZoTm1JdFl6RXlPQzAwWWpnekxUbGlZMll0Wm1OaE1EZGhNVEZtTXpWaiJ9
         run: |
-          # Install and set up Cloudflared service with the provided token
           sudo cloudflared service install "$TUNNEL_TOKEN"
 
-      - name: Install GNOME
+      - name: Configure VNC
         run: |
-          sudo apt-get install -y ubuntu-gnome-desktop gnome-shell gdm3
-          sudo systemctl set-default graphical.target
-
-      - name: Install and Configure VNC Server
-        run: |
-          # Install TigerVNC server
-          sudo apt-get install -y tigervnc-standalone-server
-
           # Create the user 'ash' and set the password to 'root'
           sudo useradd -m ash
           echo "ash:root" | sudo chpasswd
 
-          # Configure VNC password for user "ash"
+          # Configure VNC for user "ash" with XFCE
           sudo runuser -l ash -c "mkdir -p \$HOME/.vnc"
-          sudo runuser -l ash -c "echo 'root' | vncpasswd -f > \$HOME/.vnc/passwd"
-          sudo runuser -l ash -c "chmod 600 \$HOME/.vnc/passwd"
+          echo 'xfce4-session' | sudo tee /home/ash/.vnc/xstartup
+          sudo chmod +x /home/ash/.vnc/xstartup
+          sudo runuser -l ash -c "echo 'root' | vncpasswd -f > /home/ash/.vnc/passwd && chmod 600 /home/ash/.vnc/passwd"
 
-      - name: Start VNC Server for GNOME Desktop
-        run: |
-          # Start the VNC server on display :1 (port 5901)
+          # Start VNC server on display :1 (port 5901)
           sudo runuser -l ash -c "vncserver :1"
 
-      - name: Final Instructions
+      - name: Final Sleep (Keep Runner Active for 6 Hours)
         run: |
-          echo "GNOME Desktop and VNC setup complete!"
-          echo "Connect using the Cloudflare Zero Trust hostname to port 5901."
-          echo "Login credentials: Username: ash, Password: root."
+          echo "XFCE environment is set up! Keeping alive for 6 hours..."
+          sleep 6h
