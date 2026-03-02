@@ -27,7 +27,7 @@ jobs:
 
       - name: Configure Cloudflared Tunnel
         env:
-          TUNNEL_TOKEN: eyJhIjoiY2U5MWFiYmQyYWU3YjhlZjQxMmU0YWQxODJmYzUxYzciLCJ0IjoiM2MzZGE2MmEtMzMwOS00ZjAxLTkxYTctYTQ1NjBkNDVjZTQ0IiwcyI6Ik5UVTJOakZoTm1JdFl6RXlPQzAwWWpnekxUbGlZMll0Wm1OaE1EZGhNVEZtTXpWaiJ9
+          TUNNEL_TOKEN: eyJhIjoiY2U5MWFiYmQyYWU3YjhlZjQxMmU0YWQxODJmYzUxYzciLCJ0IjoiM2MzZGE2MmEtMzMwOS00ZjAxLTkxYTctYTQ1NjBkNDVjZTQ0IiwicyI6Ik5UVTJOakZoTm1JdFl6RXlPQzAwWWpnekxUbGlZMll0Wm1OaE1EZGhNVEZtTXpWaiJ9
         run: |
           # Install and set up Cloudflared service with the provided token
           sudo cloudflared service install "$TUNNEL_TOKEN"
