@@ -1,51 +1,57 @@
-name: Setup GNOME with Cloudflared and VNC
+name: Setup GNOME with VNC for 6 hours
 
 on:
   workflow_dispatch:
 
 jobs:
-  setup-gnome-cloudflared-vnc:
+  setup-gnome-vnc:
     runs-on: ubuntu-latest
+    timeout-minutes: 360 # Ensures the job runs for at most 6 hours (360 minutes)
 
     steps:
-      - name: Update Runner
-        run: sudo apt update && sudo apt upgrade -y
+      - name: Update and Upgrade System
+        run: |
+          sudo apt update && sudo apt upgrade -y
 
-      - name: Install Cloudflared
+      - name: Install GNOME
+        run: |
+          # Install GNOME desktop environment
+          sudo apt install -y ubuntu-gnome-desktop gnome-shell gdm3
+          sudo systemctl set-default graphical.target
+
+      - name: Install TigerVNC and Configure
+        run: |
+          # Install VNC Server
+          sudo apt install -y tigervnc-standalone-server
+
+          # Create the 'ash' user and set the password to 'root'
+          sudo useradd -m ash
+          echo "ash:root" | sudo chpasswd
+
+          # Configure VNC Server for user "ash"
+          sudo runuser -l ash -c "mkdir -p \$HOME/.vnc"
+          sudo runuser -l ash -c "echo 'root' | vncpasswd -f > \$HOME/.vnc/passwd"
+          sudo runuser -l ash -c "chmod 600 \$HOME/.vnc/passwd"
+
+      - name: Start VNC Server for GNOME Desktop
+        run: |
+          # Start TigerVNC on display :1 (Port 5901)
+          sudo runuser -l ash -c "vncserver :1"
+
+      - name: Install Cloudflared and Set Up
+        env:
+          TUNNEL_TOKEN: eyJhIjoiY2U5MWFiYmQyYWU3YjhlZjQxMmU0YWQxODJmYzUxYzciLCJ0IjoiM2MzZGE2MmEtMzMwOS00ZjAxLTkxYTctYTQ1NjBkNDVjZTQ0IiwcyI6Ik5UVTJOakZoTm1JdFl6RXlPQzAwWWpnekxUbGlZMll0Wm1OaE1EZGhNVEZtTXpWaiJ9
         run: |
           # Add Cloudflared repository and install
           curl -fsSl https://pkg.cloudflare.com/cloudflared-ascii.repo | sudo tee /etc/apt/sources.list.d/cloudflared.list
           sudo apt update
           sudo apt install -y cloudflared
 
-      - name: Configure Cloudflared Tunnel
-        env:
-          TUNNEL_TOKEN: eyJhIjoiY2U5MWFiYmQyYWU3YjhlZjQxMmU0YWQxODJmYzUxYzciLCJ0IjoiM2MzZGE2MmEtMzMwOS00ZjAxLTkxYTctYTQ1NjBkNDVjZTQ0IiwcyI6Ik5UVTJOakZoTm1JdFl6RXlPQzAwWWpnekxUbGlZMll0Wm1OaE1EZGhNVEZtTXpWaiJ9
-        run: |
-          # Install and set up Cloudflared service with a provided token
+          # Configure Cloudflared tunnel
           sudo cloudflared service install "$TUNNEL_TOKEN"
-
-      - name: Install GNOME
-        run: |
-          sudo apt install -y ubuntu-gnome-desktop gnome-shell gdm3
-          sudo systemctl set-default graphical.target
-
-      - name: Install and Configure VNC Server
-        run: |
-          # Install TigerVNC server
-          sudo apt install -y tigervnc-standalone-server
-
-          # Create a user for VNC and set the password
-          sudo useradd -m gnomeuser
-          echo "gnomeuser:password" | sudo chpasswd
-          sudo runuser -l gnomeuser -c "mkdir -p \$HOME/.vnc && echo 'password' | vncpasswd -f > \$HOME/.vnc/passwd && chmod 600 \$HOME/.vnc/passwd"
-
-      - name: Start VNC Server
-        run: |
-          # Start VNC server on display :1
-          sudo runuser -l gnomeuser -c "vncserver :1"
 
       - name: Final Instructions
         run: |
-          echo "Setup Complete!"
-          echo "Connect to your GNOME desktop via the Cloudflare Zero Trust hostname using a VNC client on port 5901."
+          echo "GNOME Desktop and VNC Setup Complete!"
+          echo "Use Cloudflare Zero Trust to connect to the desktop on port 5901."
+          echo "Session timeout is set to 6 hours."
