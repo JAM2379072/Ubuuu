@@ -1,4 +1,4 @@
-name: Setup XFCE and VNC with Cloudflared (6-Hour Runtime)
+name: Setup XFCE with VNC and Cloudflared (Fully Functional)
 
 on:
   workflow_dispatch:
@@ -15,8 +15,8 @@ jobs:
 
       - name: Install XFCE and Dependencies
         run: |
-          # Install XFCE desktop environment and dependencies
-          sudo apt-get install -y xfce4 xfce4-goodies tigervnc-standalone-server
+          # Install XFCE desktop environment, VNC server, and required packages
+          sudo apt-get install -y xfce4 xfce4-goodies tigervnc-standalone-server dbus-x11
 
       - name: Add and Install Cloudflared
         run: |
@@ -30,23 +30,32 @@ jobs:
 
       - name: Configure Cloudflared Tunnel
         env:
-          TUNNEL_TOKEN: eyJhIjoiY2U5MWFiYmQyYWU3YjhlZjQxMmU0YWQxODJmYzUxYzciLCJ0IjoiM2MzZGE2MmEtMzMwOS00ZjAxLTkxYTctYTQ1NjBkNDVjZTQ0IiwicyI6Ik5UVTJOakZoTm1JdFl6RXlPQzAwWWpnekxUbGlZMll0Wm1OaE1EZGhNVEZtTXpWaiJ9
+          TUNNEL_TOKEN: eyJhIjoiY2U5MWFiYmQyYWU3YjhlZjQxMmU0YWQxODJmYzUxYzciLCJ0IjoiM2MzZGE2MmEtMzMwOS00ZjAxLTkxYTctYTQ1NjBkNDVjZTQ0IiwcyI6Ik5UVTJOakZoTm1JdFl6RXlPQzAwWWpnekxUbGlZMll0Wm1OaE1EZGhNVEZtTXpWaiJ9
         run: |
           sudo cloudflared service install "$TUNNEL_TOKEN"
 
-      - name: Configure VNC
+      - name: Configure VNC with XFCE
         run: |
           # Create the user 'ash' and set the password to 'root'
           sudo useradd -m ash
           echo "ash:root" | sudo chpasswd
 
-          # Configure VNC for user "ash" with XFCE
+          # Configure VNC for user "ash"
           sudo runuser -l ash -c "mkdir -p \$HOME/.vnc"
-          echo 'xfce4-session' | sudo tee /home/ash/.vnc/xstartup
-          sudo chmod +x /home/ash/.vnc/xstartup
-          sudo runuser -l ash -c "echo 'root' | vncpasswd -f > /home/ash/.vnc/passwd && chmod 600 /home/ash/.vnc/passwd"
 
-          # Start VNC server on display :1 (port 5901)
+          # Add XFCE startup commands to the VNC startup script
+          echo '#!/bin/bash' | sudo tee /home/ash/.vnc/xstartup
+          echo 'xrdb $HOME/.Xresources' | sudo tee -a /home/ash/.vnc/xstartup
+          echo 'startxfce4 &' | sudo tee -a /home/ash/.vnc/xstartup
+          sudo chmod +x /home/ash/.vnc/xstartup
+
+          # Set VNC password for user "ash"
+          sudo runuser -l ash -c "echo 'root' | vncpasswd -f > \$HOME/.vnc/passwd"
+          sudo chmod 600 /home/ash/.vnc/passwd
+
+      - name: Start VNC Server
+        run: |
+          # Start the VNC server on display :1 (port 5901)
           sudo runuser -l ash -c "vncserver :1"
 
       - name: Final Sleep (Keep Runner Active for 6 Hours)
